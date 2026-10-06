@@ -80,7 +80,7 @@ TOPIC_STEMS = {
     "tithe": "tithe offering diezmo ofrenda",
     "trials": "trial suffer hardship tribulation overcom prueba sufrim tribulac superar",
     "unity": "unity harmony united unidad armonia unid",
-    "words": "word tongue speech speak palabra lengua hablar",
+    "words": "tongue speech speak gossip complain lengua hablar chisme queja murmur",  # not "word": too often "word of God"
     "worship": "worship adoracion culto",
 }
 
