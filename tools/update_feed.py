@@ -193,7 +193,27 @@ def known_urls():
     return urls
 
 
+def check(n):
+    """Test mode: read the n newest sermons of each list and print what would be saved, changing nothing."""
+    ok = True
+    for lang in LANGS:
+        for gb, kind in TYPES.items():
+            items = list_page(lang, gb)
+            print(f"{lang} {kind}: {len(items)} on the newest list")
+            ok &= bool(items)
+            for slug, list_title, dur in items[:n]:
+                page = media_page(lang, slug) or {}
+                tp = detect_topics(page.get("t", ""), page.get("s", ""))
+                print(f"  {slug}\n    title={page.get('t')!r} dur={dur} date={page.get('dt')} views={page.get('v')} "
+                      f"yt={page.get('y')}\n    topics={tp}\n    summary={page.get('s', '')[:160]!r}")
+                ok &= bool(page.get("t") and page.get("dt") and page.get("y"))
+    print("CHECK OK" if ok else "CHECK FOUND MISSING FIELDS")
+    return 0 if ok else 1
+
+
 def main():
+    if len(sys.argv) > 2 and sys.argv[1] == "--check":
+        return check(int(sys.argv[2]))
     auto = json.loads(AUTO.read_text(encoding="utf-8")) if AUTO.exists() else []
     known = known_urls() | {a["u"] for a in auto}
     added = []

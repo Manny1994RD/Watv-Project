@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "7 10 * * *"   # every day at 10:07 UTC (6:07 AM New York)
   workflow_dispatch:        # also runnable by hand: Actions tab → "Update sermons daily" → Run workflow
+    inputs:
+      check_only:
+        description: "Test only: read the newest sermons and print them without saving"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -22,12 +27,18 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Test reading watvmedia.org (no changes saved)
+        if: ${{ inputs.check_only }}
+        run: python tools/update_feed.py --check 2
+
       - name: Find new sermons on watvmedia.org
+        if: ${{ !inputs.check_only }}
         run: |
           pip install --quiet openpyxl
           python tools/update_feed.py
 
       - name: Save and publish if anything changed
+        if: ${{ !inputs.check_only }}
         run: |
           if git diff --quiet -- data/; then
             echo "No new sermons today."
