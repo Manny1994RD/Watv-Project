@@ -1,47 +1,50 @@
 """Temporary: print how watvmedia.org exposes its media list, to build the daily updater."""
 import re
+import urllib.parse
 import urllib.request
 
-UA = {"User-Agent": "Mozilla/5.0 (compatible; SermonFinderBot/1.0)"}
+UA = {"User-Agent": "Mozilla/5.0 (compatible; SermonFinderBot/1.0)", "X-Requested-With": "XMLHttpRequest"}
 
 
-def get(url):
+def get(url, data=None):
     try:
-        req = urllib.request.Request(url, headers=UA)
+        body = urllib.parse.urlencode(data).encode() if data else None
+        req = urllib.request.Request(url, data=body, headers=UA)
         with urllib.request.urlopen(req, timeout=30) as r:
-            return r.status, r.headers.get("content-type", ""), r.read().decode("utf-8", "replace")
+            return r.status, r.read().decode("utf-8", "replace")
     except Exception as e:  # noqa: BLE001
-        return "ERR", "", str(e)
+        return "ERR", str(e)
 
 
-def show(url, limit=3000, grep=None):
-    status, ctype, body = get(url)
-    print(f"\n===== {url} -> {status} {ctype} len={len(body)}")
-    if grep:
-        for m in re.finditer(grep, body):
-            s = max(0, m.start() - 200)
-            print("…", body[s:m.end() + 400].replace("\n", " "), "…")
-            print("-----")
-    else:
-        print(body[:limit])
-    return body
+def one(s, n=700):
+    return re.sub(r"\s+", " ", s)[:n]
 
 
-show("https://watvmedia.org/robots.txt")
-show("https://watvmedia.org/sitemap.xml", 4000)
-page = show("https://watvmedia.org/es/media/be-born-again", 200)
-for pat in [r"<meta[^>]+>", r"application/ld\+json[^<]*<", r"youtu[^\"' ]{0,60}", r"__NEXT_DATA__|__NUXT__|window\.__[A-Z_]+"]:
-    found = re.findall(pat, page)[:25]
-    print(f"\n--- pattern {pat}: {len(found)}")
-    for f in found:
-        print("  ", f[:400])
-print("\n--- page head 6000 chars after <body")
-i = page.find("<body")
-print(page[i:i + 6000])
-for u in ["https://watvmedia.org/es/media", "https://watvmedia.org/es/sermon", "https://watvmedia.org/es/media/sermon",
-          "https://watvmedia.org/en/media", "https://watvmedia.org/es", "https://watvmedia.org/wp-json/wp/v2/types"]:
-    b = show(u, 300)
-    links = sorted(set(re.findall(r'href="([^"]*/media/[^"]*)"', b)))
-    print("media links:", len(links), links[:40])
-    apis = sorted(set(re.findall(r'["\'](/[^"\']*(?:api|json|ajax)[^"\']*)["\']', b)))
-    print("api-ish:", apis[:40])
+def ctx(body, pat, before=150, after=600, maxn=4):
+    for m in list(re.finditer(pat, body))[:maxn]:
+        print("   >>", one(body[max(0, m.start() - before):m.end() + after], before + after + 50))
+
+
+print("## robots:", one(get("https://watvmedia.org/robots.txt")[1], 600))
+print("## sitemap:", one(get("https://watvmedia.org/sitemap.xml")[1], 600))
+
+_, home = get("https://watvmedia.org/es")
+print("## home: goMediaList/newMedia/ajax contexts")
+ctx(home, r"function goMediaList", 0, 900, 2)
+ctx(home, r"newMedia\.ajax", 300, 700, 2)
+
+for js in ["/common/common.js", "/scripts/media.js", "/common/media.js"]:
+    s, b = get("https://watvmedia.org" + js)
+    print("## js", js, s, len(b))
+    if s == 200:
+        ctx(b, r"goMediaList", 0, 700, 3)
+        print("   ajax endpoints:", sorted(set(re.findall(r"[\"']/?([\w/]+\.ajax)", b)))[:40])
+
+_, page = get("https://watvmedia.org/es/media/be-born-again")
+i = page.find('class="container-body')
+body = re.sub(r"<script.*?</script>", "", page[i:], flags=re.S)
+body = re.sub(r"<!--.*?-->", "", body, flags=re.S)
+print("## media page body (scripts removed):")
+print(one(body, 5000))
+print("## media page ajax:", sorted(set(re.findall(r"[\"']/?([\w/]+\.ajax)", page))))
+ctx(page, r"\.ajax", 200, 500, 8)
