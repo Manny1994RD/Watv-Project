@@ -48,6 +48,17 @@ Every morning, `.github/workflows/update-sermons.yml` runs on GitHub. It checks 
 - New sermons are kept in `data/auto_sermons.json`, so rebuilding from the Excel never loses them. If the Excel later includes the same sermon, the Excel version is used.
 - Topics for new sermons are detected from the title and summary, which is lighter than the Excel's full-transcript index. Add new words to `TOPIC_STEMS` in `tools/update_feed.py` to improve detection.
 
+## Keep the Excel in Google Drive or OneDrive
+
+The daily job can download the Excel from a shared link, so whoever edits the shared file updates the site the next morning. No code changes are needed.
+
+1. Upload `Biblioteca_Sermones_WATV.xlsx` to Google Drive or OneDrive. If you open it in Google Sheets that's fine too. Keep the sheet names and columns as they are.
+2. Share it as **Anyone with the link can view**, and copy the link.
+3. On GitHub, go to **Settings → Secrets and variables → Actions → New repository secret**. Set the name to `EXCEL_URL`, paste the link as the value, and click **Add secret**. The link stays private because only the job can read it.
+4. Run **Actions → Update sermons daily → Run workflow** once to check it. The log for the "Get the latest Excel" step says whether it downloaded the file.
+
+Google Sheets links, Google Drive file links, OneDrive (`1drv.ms` / `onedrive.live.com`) and SharePoint links all work. If the link is wrong or the file isn't the sermon library, the site keeps the last good version. GitHub then emails you that the job failed, and new sermons from watvmedia.org are still added that day.
+
 ## Put it online for free (GitHub Pages)
 
 1. On GitHub, open the repository, then **Settings → Pages**.

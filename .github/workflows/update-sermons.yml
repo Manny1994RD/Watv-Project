@@ -31,21 +31,37 @@ jobs:
         if: ${{ inputs.check_only }}
         run: python tools/update_feed.py --check 2
 
-      - name: Find new sermons on watvmedia.org
+      - name: Get the latest Excel from Google Drive / OneDrive
+        # Only runs once the EXCEL_URL secret is set (Settings → Secrets and variables → Actions).
         if: ${{ !inputs.check_only }}
+        env:
+          EXCEL_URL: ${{ secrets.EXCEL_URL }}
+        run: |
+          pip install --quiet openpyxl
+          if [ -z "$EXCEL_URL" ]; then
+            echo "No EXCEL_URL secret set: using the Excel stored in the repository."
+            exit 0
+          fi
+          python tools/fetch_excel.py
+          python tools/build_data.py
+
+      - name: Find new sermons on watvmedia.org
+        # Runs even if the Excel download failed, so new sermons still get added.
+        if: ${{ !cancelled() && !inputs.check_only }}
         run: |
           pip install --quiet openpyxl
           python tools/update_feed.py
 
       - name: Save and publish if anything changed
-        if: ${{ !inputs.check_only }}
+        if: ${{ !cancelled() && !inputs.check_only }}
         run: |
-          if git diff --quiet -- data/; then
-            echo "No new sermons today."
+          # Only the generated site data decides; a re-exported but identical Excel is not a change.
+          if git diff --quiet -- data/sermons.js data/auto_sermons.json; then
+            echo "Nothing new today."
             exit 0
           fi
           git config user.name "sermon-updater[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/auto_sermons.json data/sermons.js
-          git commit -m "Add new sermons from watvmedia.org ($(date -u +%Y-%m-%d))"
+          git add data/auto_sermons.json data/sermons.js data/Biblioteca_Sermones_WATV.xlsx
+          git commit -m "Update sermons ($(date -u +%Y-%m-%d))"
           git push
