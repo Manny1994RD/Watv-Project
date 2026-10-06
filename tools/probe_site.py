@@ -3,13 +3,16 @@ import re
 import urllib.parse
 import urllib.request
 
-UA = {"User-Agent": "Mozilla/5.0 (compatible; SermonFinderBot/1.0)", "X-Requested-With": "XMLHttpRequest"}
+UA = {"User-Agent": "Mozilla/5.0 (compatible; SermonFinderBot/1.0)"}
 
 
-def get(url, data=None):
+def get(url, data=None, ajax=False):
     try:
-        body = urllib.parse.urlencode(data).encode() if data else None
-        req = urllib.request.Request(url, data=body, headers=UA)
+        body = urllib.parse.urlencode(data).encode() if data is not None else None
+        h = dict(UA)
+        if ajax:
+            h["X-Requested-With"] = "XMLHttpRequest"
+        req = urllib.request.Request(url, data=body, headers=h)
         with urllib.request.urlopen(req, timeout=30) as r:
             return r.status, r.read().decode("utf-8", "replace")
     except Exception as e:  # noqa: BLE001
@@ -20,31 +23,36 @@ def one(s, n=700):
     return re.sub(r"\s+", " ", s)[:n]
 
 
-def ctx(body, pat, before=150, after=600, maxn=4):
-    for m in list(re.finditer(pat, body))[:maxn]:
-        print("   >>", one(body[max(0, m.start() - before):m.end() + after], before + after + 50))
+def strip(html):
+    html = re.sub(r"<script.*?</script>", "", html, flags=re.S)
+    return re.sub(r"<!--.*?-->", "", html, flags=re.S)
 
 
-print("## robots:", one(get("https://watvmedia.org/robots.txt")[1], 600))
-print("## sitemap:", one(get("https://watvmedia.org/sitemap.xml")[1], 600))
+s, sm = get("https://watvmedia.org/common/sitemap.xml")
+locs = re.findall(r"<loc>([^<]+)</loc>", sm)
+print("## sitemap", s, len(sm), "locs:", len(locs))
+print("   first:", locs[:8])
+print("   es media:", len([u for u in locs if "/es/media/" in u]), "en media:", len([u for u in locs if "/en/media/" in u]))
+print("   sample entry:", one(sm[sm.find("<url>"):sm.find("<url>") + 600], 600))
 
-_, home = get("https://watvmedia.org/es")
-print("## home: goMediaList/newMedia/ajax contexts")
-ctx(home, r"function goMediaList", 0, 900, 2)
-ctx(home, r"newMedia\.ajax", 300, 700, 2)
-
-for js in ["/common/common.js", "/scripts/media.js", "/common/media.js"]:
-    s, b = get("https://watvmedia.org" + js)
-    print("## js", js, s, len(b))
-    if s == 200:
-        ctx(b, r"goMediaList", 0, 700, 3)
-        print("   ajax endpoints:", sorted(set(re.findall(r"[\"']/?([\w/]+\.ajax)", b)))[:40])
+for method, data in [("GET", None), ("POST", {"WATV_MEDIA_GB": 1, "CATEGORY1_CD": ""})]:
+    url = "https://watvmedia.org/es/media/list" + ("?WATV_MEDIA_GB=1&CATEGORY1_CD=" if method == "GET" else "")
+    s, b = get(url, data)
+    links = re.findall(r'href="(/es/media/[^"]+)"', b)
+    print(f"## list {method}", s, len(b), "links:", len(links), links[:12])
+    i = b.find(links[0]) if links else -1
+    if i > 0:
+        print("   item html:", one(strip(b[i - 600:i + 1600]), 2200))
+    print("   paging/ajax:", sorted(set(re.findall(r"[\"']/?([\w/]+\.ajax)", b))))
+    for m in list(re.finditer(r"function (\w*(?:[Pp]age|[Mm]ore|[Ll]ist)\w*)\s*\(", b))[:8]:
+        print("   fn:", one(b[m.start():m.start() + 700], 700))
 
 _, page = get("https://watvmedia.org/es/media/be-born-again")
-i = page.find('class="container-body')
-body = re.sub(r"<script.*?</script>", "", page[i:], flags=re.S)
-body = re.sub(r"<!--.*?-->", "", body, flags=re.S)
-print("## media page body (scripts removed):")
-print(one(body, 5000))
-print("## media page ajax:", sorted(set(re.findall(r"[\"']/?([\w/]+\.ajax)", page))))
-ctx(page, r"\.ajax", 200, 500, 8)
+body = strip(page)
+i = body.find('class="you')
+print("## media page after languages:")
+print(one(body[i:], 4500))
+_, en = get("https://watvmedia.org/en/media/be-born-again")
+i = strip(en).find('class="you')
+print("## EN page after languages:")
+print(one(strip(en)[i:], 2500))
