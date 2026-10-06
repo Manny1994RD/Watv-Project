@@ -340,7 +340,9 @@ h1 {
   display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase;
   padding: 4px 9px; border-radius: 999px; background: rgba(255, 255, 255, .92); color: #1b2b5c;
 }
-.thumb .badge { position: absolute; z-index: 1; left: 10px; top: 10px; }
+.thumb .badges { position: absolute; z-index: 1; left: 10px; top: 10px; display: flex; gap: 6px; }
+.badge.b-new { background: #2fbf71; color: #fff; animation: glow 2.4s ease-in-out infinite; }
+@keyframes glow { 50% { box-shadow: 0 0 0 4px rgba(47, 191, 113, .3); } }
 .badge.b-r { color: #6a3fc1; }
 .badge.b-m { background: var(--gold); color: #fff; }
 .save {

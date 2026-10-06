@@ -40,6 +40,14 @@ Then open <http://localhost:8000>. You can also just double-click `index.html` (
 3. In `sw.js`, change `VERSION` (for example `sermones-v2`) so phones pick up the new data.
 4. Publish the files again.
 
+## New sermons are added automatically every day
+
+Every morning, `.github/workflows/update-sermons.yml` runs on GitHub. It checks watvmedia.org for the newest sermons and summary sermons in Spanish and English. It adds any that aren't in the library yet, with their full summary, date, length, category, YouTube thumbnail and detected topics. Then it republishes the site. New sermons get a green **New** badge for 3 weeks.
+
+- To run it right away: on GitHub, go to **Actions → Update sermons daily → Run workflow**.
+- New sermons are kept in `data/auto_sermons.json`, so rebuilding from the Excel never loses them. If the Excel later includes the same sermon, the Excel version is used.
+- Topics for new sermons are detected from the title and summary, which is lighter than the Excel's full-transcript index. Add new words to `TOPIC_STEMS` in `tools/update_feed.py` to improve detection.
+
 ## Put it online for free (GitHub Pages)
 
 1. On GitHub, open the repository, then **Settings → Pages**.

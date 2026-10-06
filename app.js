@@ -38,7 +38,7 @@
       copied: 'Enlace copiado', addedSaved: 'Guardado en tus sermones', removedSaved: 'Quitado de guardados',
       mentions: n => `mencionado ${n} ${n === 1 ? 'vez' : 'veces'}`,
       views: n => `${n.toLocaleString('es')} vistas`,
-      min: 'min', topicMatch: 'Tema', tagMatch: 'Etiqueta', need: 'Necesidad',
+      newBadge: 'Nuevo', min: 'min', topicMatch: 'Tema', tagMatch: 'Etiqueta', need: 'Necesidad',
       search: 'Búsqueda', partial: 'Sin coincidencia exacta. Mostrando los más cercanos.',
       noVideo: 'Este vídeo solo está disponible en WATV.',
       footer: 'Fuente: <a href="https://watvmedia.org" target="_blank" rel="noopener">watvmedia.org</a>. Los enlaces abren el vídeo original.',
@@ -71,7 +71,7 @@
       copied: 'Link copied', addedSaved: 'Saved', removedSaved: 'Removed from saved',
       mentions: n => `mentioned ${n} ${n === 1 ? 'time' : 'times'}`,
       views: n => `${n.toLocaleString('en')} views`,
-      min: 'min', topicMatch: 'Topic', tagMatch: 'Tag', need: 'Need',
+      newBadge: 'New', min: 'min', topicMatch: 'Topic', tagMatch: 'Tag', need: 'Need',
       search: 'Search', partial: 'No exact match. Showing the closest sermons.',
       noVideo: 'This video is only available on WATV.',
       footer: 'Source: <a href="https://watvmedia.org" target="_blank" rel="noopener">watvmedia.org</a>. Links open the original video.',
@@ -172,6 +172,9 @@
   const fmtDur = s => s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
     : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   const thumb = (y, q = 'mqdefault') => `https://i.ytimg.com/vi/${y}/${q}.jpg`;
+  // Sermons published in the last 3 weeks get a "New" badge.
+  const NEW_SINCE = new Date(Date.now() - 21 * 864e5).toISOString().slice(0, 10);
+  const isNew = v => (v.dt || '') >= NEW_SINCE;
 
   // Synonym word -> topic keys
   const SYN = new Map();
@@ -320,7 +323,7 @@
       if (state.sort === 'relevance') {
         const hasFocus = state.need || state.topics.size;
         results.sort(hasFocus ? (a, b) => relevanceBase(b) - relevanceBase(a) || (b.v || 0) - (a.v || 0)
-          : state.savedView ? () => 0 : (a, b) => (b.v || 0) - (a.v || 0) || (b.dt || '').localeCompare(a.dt || ''));
+          : state.savedView ? () => 0 : (a, b) => (b.dt || '').localeCompare(a.dt || '') || (b.v || 0) - (a.v || 0));
       }
     }
     if (state.sort === 'views') results.sort((a, b) => (b.v || 0) - (a.v || 0));
@@ -351,7 +354,7 @@
     return `<article class="card" style="--i:${i}" data-id="${v.id}" tabindex="0" role="button" aria-label="${esc(v.t)}">
       <div class="thumb" style="${gradient(v)}">${art}${media}
         <span class="play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
-        <span class="badge b-${v.k}">${esc(typeLabel)}</span>
+        <span class="badges"><span class="badge b-${v.k}">${esc(typeLabel)}</span>${isNew(v) ? `<span class="badge b-new">${esc(t('newBadge'))}</span>` : ''}</span>
         ${state.lang === 'all' ? `<span class="lang-badge">${v.l.toUpperCase()}</span>` : ''}
         ${v.d ? `<span class="dur">${fmtDur(v.d)}</span>` : ''}
       </div>

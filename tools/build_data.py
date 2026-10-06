@@ -18,6 +18,7 @@ import openpyxl
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_XLSX = ROOT / "data" / "Biblioteca_Sermones_WATV.xlsx"
 OUT = ROOT / "data" / "sermons.js"
+AUTO = ROOT / "data" / "auto_sermons.json"  # sermons found by tools/update_feed.py
 
 # Canonical topics: key -> (English label in the Excel, Spanish label in the Excel, emoji)
 TOPICS = {
@@ -201,6 +202,15 @@ def main():
             "u": link or "",
             "y": youtube_id(yt),
         })
+
+    # Add sermons the daily updater found that the Excel doesn't have yet.
+    if AUTO.exists():
+        in_excel = {it["u"] for it in items}
+        auto = [a for a in json.loads(AUTO.read_text(encoding="utf-8")) if a["u"] not in in_excel]
+        for a in auto:
+            a.pop("added", None)
+        items.extend(auto)
+        print(f"  + {len(auto)} sermons from the daily updater")
 
     # Pair Spanish/English versions of the same video (same watvmedia slug).
     by_slug = {}
