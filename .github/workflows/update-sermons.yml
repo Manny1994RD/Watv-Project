@@ -1,9 +1,9 @@
-name: Update sermons daily
+name: Update sermons (Tue & Fri)
 
 on:
   schedule:
-    - cron: "7 10 * * *"   # every day at 10:07 UTC (6:07 AM New York)
-  workflow_dispatch:        # also runnable by hand: Actions tab → "Update sermons daily" → Run workflow
+    - cron: "7 10 * * 2,5"   # Tuesdays and Fridays at 10:07 UTC (6:07 AM New York)
+  workflow_dispatch:          # also runnable by hand: Actions tab → "Update sermons (Tue & Fri)" → Run workflow
     inputs:
       check_only:
         description: "Test only: read the newest sermons and print them without saving"
